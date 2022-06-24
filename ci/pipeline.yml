@@ -1,0 +1,66 @@
+---
+resources:
+- name: source
+  type: git
+  source:
+    uri: https://gitea.redxef.at/redxef/certbot-ovh
+    branch: master
+    fetch_tags: true
+- name: upstream-image
+  type: registry-image
+  source:
+    repository: alpine
+
+jobs:
+- name: build-push
+  plan:
+  - get: source
+    trigger: true
+  - get: upstream-image
+    trigger: true
+  - task: compute-docker-tags
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: alpine/git
+      inputs:
+      - name: source
+        path: .
+      outputs:
+      - name: docker-tags
+      run:
+        path: sh
+        args:
+        - -c
+        - |
+          #!/usr/bin/env sh
+          git rev-parse --short HEAD > docker-tags/tags.txt
+          git show-ref --tags | \
+              sed -n "/$(git rev-parse HEAD)/ s|$(git rev-parse HEAD).refs/tags/||gp" \
+              >> docker-tags/tags.txt
+  - task: build
+    privileged: true
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: redxef/concourse-buildkit
+      inputs:
+      - name: source
+        path: .
+      - name: docker-tags
+      params:
+        username: ((docker.username))
+        password: ((docker.password))
+        repository: docker.io/redxef/certbot-ovh
+        tag: latest
+        additional_tags: docker-tags/tags.txt
+        push: true
+        platform: aarch64,arm,i386,ppc64le,s390x,x86_64
+        context: .
+        manual: false
+      run:
+        path: build
