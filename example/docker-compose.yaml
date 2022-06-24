@@ -1,0 +1,15 @@
+version: '3.3'
+services:
+  certbot:
+    restart: unless-stopped
+    image: redxef/certbot-ovh
+    build:
+      context: ../
+    environment:
+    - CERTBOT_OVH_AGREE_TOS=1
+    - CERTBOT_OVH_LE_EMAIL=<your_email>
+    - CERTBOT_OVH_DOMAINS=yourdomain.tld,*.yourdomain.tld
+    volumes:
+    - ./certbot-ovh.ini:/etc/certbot-ovh.ini
+    
+
